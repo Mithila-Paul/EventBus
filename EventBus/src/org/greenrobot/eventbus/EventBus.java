@@ -363,17 +363,15 @@ public class EventBus {
 
     public boolean hasSubscriberForEvent(Class<?> eventClass) {
         List<Class<?>> eventTypes = lookupAllEventTypes(eventClass);
-        if (eventTypes != null) {
-            int countTypes = eventTypes.size();
-            for (int h = 0; h < countTypes; h++) {
-                Class<?> clazz = eventTypes.get(h);
-                CopyOnWriteArrayList<Subscription> subscriptions;
-                synchronized (this) {
-                    subscriptions = subscriptionsByEventType.get(clazz);
-                }
-                if (subscriptions != null && !subscriptions.isEmpty()) {
-                    return true;
-                }
+        int countTypes = eventTypes.size();
+        for (int h = 0; h < countTypes; h++) {
+            Class<?> clazz = eventTypes.get(h);
+            CopyOnWriteArrayList<Subscription> subscriptions;
+            synchronized (this) {
+                subscriptions = subscriptionsByEventType.get(clazz);
+            }
+            if (subscriptions != null && !subscriptions.isEmpty()) {
+                return true;
             }
         }
         return false;
