@@ -166,6 +166,13 @@ public class EventBus {
                     + eventType);
         }
 
+        insertSubscription(newSubscription, subscriberMethod, subscriptions);
+        addEventTypeForSubscriber(subscriber, eventType);
+        postStickyEventForSubscriber(subscriberMethod, eventType, newSubscription);
+    }
+
+    private void insertSubscription(Subscription newSubscription, SubscriberMethod subscriberMethod,
+            CopyOnWriteArrayList<Subscription> subscriptions) {
         int size = subscriptions.size();
         for (int i = 0; i <= size; i++) {
             if (i == size || subscriberMethod.priority > subscriptions.get(i).subscriberMethod.priority) {
@@ -173,30 +180,37 @@ public class EventBus {
                 break;
             }
         }
+    }
 
+    private void addEventTypeForSubscriber(Object subscriber, Class<?> eventType) {
         List<Class<?>> subscribedEvents = typesBySubscriber.get(subscriber);
         if (subscribedEvents == null) {
             subscribedEvents = new ArrayList<>();
             typesBySubscriber.put(subscriber, subscribedEvents);
         }
         subscribedEvents.add(eventType);
+    }
 
-        if (subscriberMethod.sticky) {
-            if (eventInheritance) {
-                // Existing sticky events of all subclasses of eventType have to be considered.
-                // Note: Iterating over all events may be inefficient with lots of sticky events,
-                // thus data structure should be changed to allow a more efficient lookup
-                // (e.g. an additional map storing sub classes of super classes: Class -> List<Class>).
-                Set<Map.Entry<Class<?>, Object>> entries = stickyEvents.entrySet();
-                for (Map.Entry<Class<?>, Object> entry : entries) {
-                    Class<?> candidateEventType = entry.getKey();
-                    if (eventType.isAssignableFrom(candidateEventType)) {
-                        Object stickyEvent = entry.getValue();
-                        checkPostStickyEventToSubscription(newSubscription, stickyEvent);
-                    }
-                }
-            } else {
-                Object stickyEvent = stickyEvents.get(eventType);
+    private void postStickyEventForSubscriber(SubscriberMethod subscriberMethod, Class<?> eventType,
+            Subscription newSubscription) {
+        if (!subscriberMethod.sticky) {
+            return;
+        }
+        if (eventInheritance) {
+            postStickyEventsForAllSubclasses(eventType, newSubscription);
+        } else {
+            Object stickyEvent = stickyEvents.get(eventType);
+            checkPostStickyEventToSubscription(newSubscription, stickyEvent);
+        }
+    }
+
+    private void postStickyEventsForAllSubclasses(Class<?> eventType, Subscription newSubscription) {
+    
+        Set<Map.Entry<Class<?>, Object>> entries = stickyEvents.entrySet();
+        for (Map.Entry<Class<?>, Object> entry : entries) {
+            Class<?> candidateEventType = entry.getKey();
+            if (eventType.isAssignableFrom(candidateEventType)) {
+                Object stickyEvent = entry.getValue();
                 checkPostStickyEventToSubscription(newSubscription, stickyEvent);
             }
         }
@@ -204,18 +218,12 @@ public class EventBus {
 
     private void checkPostStickyEventToSubscription(Subscription newSubscription, Object stickyEvent) {
         if (stickyEvent != null) {
-            // If the subscriber is trying to abort the event, it will fail (event is not tracked in posting state)
-            // --> Strange corner case, which we don't take care of here.
+        
             postToSubscription(newSubscription, stickyEvent, isMainThread());
         }
     }
 
-    /**
-     * Checks if the current thread is running in the main thread.
-     * If there is no main thread support (e.g. non-Android), "true" is always returned. In that case MAIN thread
-     * subscribers are always called in posting thread, and BACKGROUND subscribers are always called from a background
-     * poster.
-     */
+  
     private boolean isMainThread() {
         return mainThreadSupport == null || mainThreadSupport.isMainThread();
     }
