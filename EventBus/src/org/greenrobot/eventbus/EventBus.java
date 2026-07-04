@@ -441,36 +441,56 @@ public class EventBus {
     private void postToSubscription(Subscription subscription, Object event, boolean isMainThread) {
         switch (subscription.subscriberMethod.threadMode) {
             case POSTING:
-                invokeSubscriber(subscription, event);
+                dispatchPosting(subscription, event);
                 break;
             case MAIN:
-                if (isMainThread) {
-                    invokeSubscriber(subscription, event);
-                } else {
-                    mainThreadPoster.enqueue(subscription, event);
-                }
+                dispatchMain(subscription, event, isMainThread);
                 break;
             case MAIN_ORDERED:
-                if (mainThreadPoster != null) {
-                    mainThreadPoster.enqueue(subscription, event);
-                } else {
-                    // temporary: technically not correct as poster not decoupled from subscriber
-                    invokeSubscriber(subscription, event);
-                }
+                dispatchMainOrdered(subscription, event);
                 break;
             case BACKGROUND:
-                if (isMainThread) {
-                    backgroundPoster.enqueue(subscription, event);
-                } else {
-                    invokeSubscriber(subscription, event);
-                }
+                dispatchBackground(subscription, event, isMainThread);
                 break;
             case ASYNC:
-                asyncPoster.enqueue(subscription, event);
+                dispatchAsync(subscription, event);
                 break;
             default:
                 throw new IllegalStateException("Unknown thread mode: " + subscription.subscriberMethod.threadMode);
         }
+    }
+
+    private void dispatchPosting(Subscription subscription, Object event) {
+        invokeSubscriber(subscription, event);
+    }
+
+    private void dispatchMain(Subscription subscription, Object event, boolean isMainThread) {
+        if (isMainThread) {
+            invokeSubscriber(subscription, event);
+        } else {
+            mainThreadPoster.enqueue(subscription, event);
+        }
+    }
+
+    private void dispatchMainOrdered(Subscription subscription, Object event) {
+        if (mainThreadPoster != null) {
+            mainThreadPoster.enqueue(subscription, event);
+        } else {
+            // temporary: technically not correct as poster not decoupled from subscriber
+            invokeSubscriber(subscription, event);
+        }
+    }
+
+    private void dispatchBackground(Subscription subscription, Object event, boolean isMainThread) {
+        if (isMainThread) {
+            backgroundPoster.enqueue(subscription, event);
+        } else {
+            invokeSubscriber(subscription, event);
+        }
+    }
+
+    private void dispatchAsync(Subscription subscription, Object event) {
+        asyncPoster.enqueue(subscription, event);
     }
 
     /** Looks up all Class objects including super classes and interfaces. Should also work for interfaces. */
