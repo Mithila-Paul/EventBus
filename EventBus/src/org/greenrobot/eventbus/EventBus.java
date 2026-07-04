@@ -548,27 +548,43 @@ public class EventBus {
 
     private void handleSubscriberException(Subscription subscription, Object event, Throwable cause) {
         if (event instanceof SubscriberExceptionEvent) {
-            if (logSubscriberExceptions) {
-                // Don't send another SubscriberExceptionEvent to avoid infinite event recursion, just log
-                logger.log(Level.SEVERE, "SubscriberExceptionEvent subscriber " + subscription.subscriber.getClass()
-                        + " threw an exception", cause);
-                SubscriberExceptionEvent exEvent = (SubscriberExceptionEvent) event;
-                logger.log(Level.SEVERE, "Initial event " + exEvent.causingEvent + " caused exception in "
-                        + exEvent.causingSubscriber, exEvent.throwable);
-            }
+            logSubscriberExceptionEventError(subscription, (SubscriberExceptionEvent) event, cause);
         } else {
-            if (throwSubscriberException) {
-                throw new EventBusException("Invoking subscriber failed", cause);
-            }
-            if (logSubscriberExceptions) {
-                logger.log(Level.SEVERE, "Could not dispatch event: " + event.getClass() + " to subscribing class "
-                        + subscription.subscriber.getClass(), cause);
-            }
-            if (sendSubscriberExceptionEvent) {
-                SubscriberExceptionEvent exEvent = new SubscriberExceptionEvent(this, cause, event,
-                        subscription.subscriber);
-                post(exEvent);
-            }
+            handleSubscriberExceptionForEvent(subscription, event, cause);
+        }
+    }
+
+    private void logSubscriberExceptionEventError(Subscription subscription, SubscriberExceptionEvent event,
+            Throwable cause) {
+        if (logSubscriberExceptions) {
+            // Don't send another SubscriberExceptionEvent to avoid infinite event recursion, just log
+            logger.log(Level.SEVERE, "SubscriberExceptionEvent subscriber " + subscription.subscriber.getClass()
+                    + " threw an exception", cause);
+            logger.log(Level.SEVERE, "Initial event " + event.causingEvent + " caused exception in "
+                    + event.causingSubscriber, event.throwable);
+        }
+    }
+
+    private void handleSubscriberExceptionForEvent(Subscription subscription, Object event, Throwable cause) {
+        if (throwSubscriberException) {
+            throw new EventBusException("Invoking subscriber failed", cause);
+        }
+        logSubscriberException(subscription, event, cause);
+        postSubscriberExceptionEventIfNeeded(subscription, event, cause);
+    }
+
+    private void logSubscriberException(Subscription subscription, Object event, Throwable cause) {
+        if (logSubscriberExceptions) {
+            logger.log(Level.SEVERE, "Could not dispatch event: " + event.getClass() + " to subscribing class "
+                    + subscription.subscriber.getClass(), cause);
+        }
+    }
+
+    private void postSubscriberExceptionEventIfNeeded(Subscription subscription, Object event, Throwable cause) {
+        if (sendSubscriberExceptionEvent) {
+            SubscriberExceptionEvent exEvent = new SubscriberExceptionEvent(this, cause, event,
+                    subscription.subscriber);
+            post(exEvent);
         }
     }
 
