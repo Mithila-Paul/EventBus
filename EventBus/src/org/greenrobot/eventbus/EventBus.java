@@ -16,6 +16,7 @@
 package org.greenrobot.eventbus;
 
 import org.greenrobot.eventbus.android.AndroidDependenciesDetector;
+import org.greenrobot.eventbus.meta.SubscriberInfoIndex;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -119,16 +120,17 @@ public class EventBus {
         mainThreadPoster = mainThreadSupport != null ? mainThreadSupport.createPoster(this) : null;
         backgroundPoster = new BackgroundPoster(this);
         asyncPoster = new AsyncPoster(this);
-        indexCount = builder.subscriberInfoIndexes != null ? builder.subscriberInfoIndexes.size() : 0;
-        subscriberMethodFinder = new SubscriberMethodFinder(builder.subscriberInfoIndexes,
-                builder.strictMethodVerification, builder.ignoreGeneratedIndex);
-        logSubscriberExceptions = builder.logSubscriberExceptions;
-        logNoSubscriberMessages = builder.logNoSubscriberMessages;
-        sendSubscriberExceptionEvent = builder.sendSubscriberExceptionEvent;
-        sendNoSubscriberEvent = builder.sendNoSubscriberEvent;
-        throwSubscriberException = builder.throwSubscriberException;
-        eventInheritance = builder.eventInheritance;
-        executorService = builder.executorService;
+        List<SubscriberInfoIndex> subscriberInfoIndexes = builder.getSubscriberInfoIndexes();
+        indexCount = subscriberInfoIndexes != null ? subscriberInfoIndexes.size() : 0;
+        subscriberMethodFinder = new SubscriberMethodFinder(subscriberInfoIndexes,
+                builder.getStrictMethodVerification(), builder.getIgnoreGeneratedIndex());
+        logSubscriberExceptions = builder.getLogSubscriberExceptions();
+        logNoSubscriberMessages = builder.getLogNoSubscriberMessages();
+        sendSubscriberExceptionEvent = builder.getSendSubscriberExceptionEvent();
+        sendNoSubscriberEvent = builder.getSendNoSubscriberEvent();
+        throwSubscriberException = builder.getThrowSubscriberException();
+        eventInheritance = builder.getEventInheritance();
+        executorService = builder.getExecutorService();
     }
 
     /**
