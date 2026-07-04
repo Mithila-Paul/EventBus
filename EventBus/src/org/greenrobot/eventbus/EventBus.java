@@ -159,15 +159,11 @@ public class EventBus {
     private void subscribe(Object subscriber, SubscriberMethod subscriberMethod) {
         Class<?> eventType = subscriberMethod.eventType;
         Subscription newSubscription = new Subscription(subscriber, subscriberMethod);
-        CopyOnWriteArrayList<Subscription> subscriptions = subscriptionsByEventType.get(eventType);
-        if (subscriptions == null) {
-            subscriptions = new CopyOnWriteArrayList<>();
-            subscriptionsByEventType.put(eventType, subscriptions);
-        } else {
-            if (subscriptions.contains(newSubscription)) {
-                throw new EventBusException("Subscriber " + subscriber.getClass() + " already registered to event "
-                        + eventType);
-            }
+        CopyOnWriteArrayList<Subscription> subscriptions = subscriptionsByEventType.computeIfAbsent(eventType,
+                key -> new CopyOnWriteArrayList<>());
+        if (subscriptions.contains(newSubscription)) {
+            throw new EventBusException("Subscriber " + subscriber.getClass() + " already registered to event "
+                    + eventType);
         }
 
         int size = subscriptions.size();
